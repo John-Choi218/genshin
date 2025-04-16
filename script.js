@@ -38,13 +38,14 @@ const firebaseConfig = {
       console.log(`Rendering task: ${task.data.text}, ID: ${task.id}`);
       const li = document.createElement('li');
       li.className = task.data.completed ? 'completed' : '';
-      li.dataset.id = task.id; // SortableJS에서 사용
+      li.dataset.id = task.id;
       li.innerHTML = `
         <input type="checkbox" ${task.data.completed ? 'checked' : ''} data-id="${task.id}" data-box="${box}">
         <span>${task.data.text}</span>
         <div class="button-group">
           <button class="edit-btn" data-id="${task.id}" data-box="${box}">수정</button>
           <button class="delete-btn" data-id="${task.id}" data-box="${box}">삭제</button>
+          <span class="drag-handle">☰</span>
         </div>
       `;
       taskLists[box].appendChild(li);
@@ -216,6 +217,7 @@ const firebaseConfig = {
         animation: 150,
         ghostClass: 'sortable-ghost',
         chosenClass: 'sortable-chosen',
+        handle: '.drag-handle', // 드래그 핸들 제한
         onEnd: async (evt) => {
           const orderedIds = Array.from(taskLists[box].children).map(li => li.dataset.id);
           console.log(`New order for ${box}:`, orderedIds);

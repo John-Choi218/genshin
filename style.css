@@ -55,7 +55,6 @@ li {
     align-items: center;
     padding: 10px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
-    cursor: move;
 }
 
 li.completed {
@@ -71,6 +70,7 @@ input[type="checkbox"] {
     margin-left: auto;
     display: flex;
     gap: 5px;
+    align-items: center;
 }
 
 .delete-btn {
@@ -97,6 +97,22 @@ input[type="checkbox"] {
 
 .edit-btn:hover {
     background-color: #3b6bc4;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: #666;
+    font-size: 1.2em;
+    padding: 5px;
+    user-select: none;
+}
+
+.drag-handle:hover {
+    color: #333;
+}
+
+.drag-handle:active {
+    cursor: grabbing;
 }
 
 .add-task {
@@ -138,5 +154,10 @@ input[type="checkbox"] {
 
     .button-group {
         gap: 3px;
+    }
+
+    .drag-handle {
+        font-size: 1em;
+        padding: 3px;
     }
 }
