@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>원신 숙제 앱</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="box" id="daily-box">
+            <h2>일일 숙제</h2>
+            <ul id="daily-tasks"></ul>
+            <button class="add-task" data-box="daily">항목 추가</button>
+        </div>
+        <div class="box" id="weekly-box">
+            <h2>주간 숙제</h2>
+            <ul id="weekly-tasks"></ul>
+            <button class="add-task" data-box="weekly">항목 추가</button>
+        </div>
+        <div class="box" id="todo-box">
+            <h2>하고자 하는 것들</h2>
+            <ul id="todo-tasks"></ul>
+            <button class="add-task" data-box="todo">항목 추가</button>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

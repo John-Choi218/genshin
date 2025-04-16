@@ -1,0 +1,205 @@
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyAs5cuNHl0Xz8Uh67orB_kIS73FlDHAFyo",
+    authDomain: "genshin-19001.firebaseapp.com",
+    projectId: "genshin-19001",
+    storageBucket: "genshin-19001.firebasestorage.app",
+    messagingSenderId: "665245286525",
+    appId: "1:665245286525:web:6e6ed97f903f2019057114",
+    measurementId: "G-J8H6Q2G4WS"
+  };
+  
+  // Initialize Firebase
+  let db;
+  try {
+    console.log('Initializing Firebase...');
+    const app = firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore(app);
+    console.log('Firebase initialized successfully');
+  } catch (error) {
+    console.error('Firebase initialization error:', error);
+    alert('Firebase 초기화에 실패했습니다. 콘솔을 확인해주세요.');
+  }
+  
+  const taskLists = {
+    daily: document.getElementById('daily-tasks'),
+    weekly: document.getElementById('weekly-tasks'),
+    todo: document.getElementById('todo-tasks')
+  };
+  
+  function renderTasks(box, tasks) {
+    console.log(`Rendering tasks for ${box}:`, tasks);
+    if (!taskLists[box]) {
+      console.error(`Task list for ${box} not found`);
+      return;
+    }
+    taskLists[box].innerHTML = '';
+    tasks.forEach((task) => {
+      const li = document.createElement('li');
+      li.className = task.data.completed ? 'completed' : '';
+      li.innerHTML = `
+        <input type="checkbox" ${task.data.completed ? 'checked' : ''} data-id="${task.id}" data-box="${box}">
+        <span>${task.data.text}</span>
+        <button class="delete-btn" data-id="${task.id}" data-box="${box}">삭제</button>
+      `;
+      taskLists[box].appendChild(li);
+    });
+  }
+  
+  async function addTask(box, text) {
+    if (!text.trim()) {
+      alert('항목 내용을 입력해주세요.');
+      return;
+    }
+    try {
+      console.log(`Adding task to ${box}: ${text}`);
+      await db.collection(`${box}Tasks`).add({
+        text,
+        completed: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      console.log(`Task added to ${box}`);
+    } catch (error) {
+      console.error('항목 추가 오류:', error);
+      alert('항목 추가에 실패했습니다. 콘솔을 확인해주세요.');
+    }
+  }
+  
+  async function toggleTask(box, id) {
+    try {
+      console.log(`Toggling task in ${box} with ID: ${id}`);
+      const taskRef = db.collection(`${box}Tasks`).doc(id);
+      const taskSnap = await db.collection(`${box}Tasks`).orderBy('createdAt').get();
+      const task = taskSnap.docs.find(doc => doc.id === id);
+      if (task) {
+        await taskRef.update({ completed: !task.data().completed });
+        console.log(`Task toggled in ${box}`);
+      }
+    } catch (error) {
+      console.error('항목 토글 오류:', error);
+      alert('항목 상태 변경에 실패했습니다. 콘솔을 확인해주세요.');
+    }
+  }
+  
+  async function deleteTask(box, id) {
+    try {
+      console.log(`Deleting task in ${box} with ID: ${id}`);
+      await db.collection(`${box}Tasks`).doc(id).delete();
+      console.log(`Task deleted from ${box}`);
+    } catch (error) {
+      console.error('항목 삭제 오류:', error);
+      alert('항목 삭제에 실패했습니다. 콘솔을 확인해주세요.');
+    }
+  }
+  
+  async function resetDailyTasks() {
+    try {
+      console.log('Resetting daily tasks');
+      const dailyTasks = await db.collection('dailyTasks').get();
+      const batch = db.batch();
+      dailyTasks.forEach((task) => {
+        const taskRef = db.collection('dailyTasks').doc(task.id);
+        batch.update(taskRef, { completed: false });
+      });
+      await batch.commit();
+      console.log('Daily tasks reset');
+    } catch (error) {
+      console.error('일일 리셋 오류:', error);
+      alert('일일 리셋에 실패했습니다. 콘솔을 확인해주세요.');
+    }
+  }
+  
+  async function resetWeeklyTasks() {
+    try {
+      console.log('Resetting weekly tasks');
+      const weeklyTasks = await db.collection('weeklyTasks').get();
+      const batch = db.batch();
+      weeklyTasks.forEach((task) => {
+        const taskRef = db.collection('weeklyTasks').doc(task.id);
+        batch.update(taskRef, { completed: false });
+      });
+      await batch.commit();
+      console.log('Weekly tasks reset');
+    } catch (error) {
+      console.error('주간 리셋 오류:', error);
+      alert('주간 리셋에 실패했습니다. 콘솔을 확인해주세요.');
+    }
+  }
+  
+  document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM fully loaded, setting up event listeners');
+  
+    // 추가 버튼 이벤트
+    const addTaskButtons = document.querySelectorAll('.add-task');
+    console.log('Found add-task buttons:', addTaskButtons.length);
+    addTaskButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        console.log('Add task button clicked for box:', button.dataset.box);
+        const box = button.dataset.box;
+        const text = prompt('새로운 항목을 입력하세요:');
+        if (text && text.trim()) {
+          addTask(box, text);
+        } else if (text !== null) {
+          alert('항목 내용을 입력해주세요.');
+        }
+      });
+    });
+  
+    // 체크박스 및 삭제 버튼 이벤트
+    document.addEventListener('click', (e) => {
+      if (e.target.type === 'checkbox') {
+        const box = e.target.dataset.box;
+        const id = e.target.dataset.id;
+        console.log('Checkbox clicked:', box, id);
+        toggleTask(box, id);
+      } else if (e.target.classList.contains('delete-btn')) {
+        const box = e.target.dataset.box;
+        const id = e.target.dataset.id;
+        console.log('Delete button clicked:', box, id);
+        deleteTask(box, id);
+      }
+    });
+  
+    // 실시간 데이터 동기화 및 정렬
+    Object.keys(taskLists).forEach(box => {
+      console.log(`Setting up snapshot listener for ${box}Tasks`);
+      db.collection(`${box}Tasks`).orderBy('createdAt').onSnapshot((snapshot) => {
+        const tasks = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
+        const completedTasks = tasks.filter(t => t.data.completed);
+        const incompleteTasks = tasks.filter(t => !t.data.completed);
+        renderTasks(box, [...incompleteTasks, ...completedTasks]);
+      }, (error) => {
+        console.error(`Snapshot error for ${box}Tasks:`, error);
+        alert('데이터 동기화에 실패했습니다. 콘솔을 확인해주세요.');
+      });
+    });
+  });
+  
+  function scheduleResets() {
+    const now = new Date();
+    const nextDailyReset = new Date();
+    nextDailyReset.setHours(5, 0, 0, 0);
+    if (now.getHours() >= 5) nextDailyReset.setDate(now.getDate() + 1);
+  
+    const nextWeeklyReset = new Date();
+    nextWeeklyReset.setDate(now.getDate() + ((1 + 7 - now.getDay()) % 7 || 7));
+    nextWeeklyReset.setHours(5, 0, 0, 0);
+    if (now.getDay() === 1 && now.getHours() >= 5) {
+      nextWeeklyReset.setDate(nextWeeklyReset.getDate() + 7);
+    }
+  
+    console.log('Scheduling daily reset at:', nextDailyReset);
+    console.log('Scheduling weekly reset at:', nextWeeklyReset);
+  
+    setTimeout(() => {
+      resetDailyTasks();
+      setInterval(resetDailyTasks, 24 * 60 * 60 * 1000);
+    }, nextDailyReset - now);
+  
+    setTimeout(() => {
+      resetWeeklyTasks();
+      setInterval(resetWeeklyTasks, 7 * 24 * 60 * 60 * 1000);
+    }, nextWeeklyReset - now);
+  }
+  
+  scheduleResets();
