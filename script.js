@@ -35,12 +35,17 @@ const firebaseConfig = {
     }
     taskLists[box].innerHTML = '';
     tasks.forEach((task) => {
+      console.log(`Rendering task: ${task.data.text}, ID: ${task.id}`);
       const li = document.createElement('li');
       li.className = task.data.completed ? 'completed' : '';
+      li.dataset.id = task.id; // SortableJS에서 사용
       li.innerHTML = `
         <input type="checkbox" ${task.data.completed ? 'checked' : ''} data-id="${task.id}" data-box="${box}">
         <span>${task.data.text}</span>
-        <button class="delete-btn" data-id="${task.id}" data-box="${box}">삭제</button>
+        <div class="button-group">
+          <button class="edit-btn" data-id="${task.id}" data-box="${box}">수정</button>
+          <button class="delete-btn" data-id="${task.id}" data-box="${box}">삭제</button>
+        </div>
       `;
       taskLists[box].appendChild(li);
     });
@@ -53,15 +58,33 @@ const firebaseConfig = {
     }
     try {
       console.log(`Adding task to ${box}: ${text}`);
+      const snapshot = await db.collection(`${box}Tasks`).orderBy('order', 'desc').limit(1).get();
+      const maxOrder = snapshot.empty ? 0 : snapshot.docs[0].data().order || 0;
       await db.collection(`${box}Tasks`).add({
         text,
         completed: false,
+        order: maxOrder + 1,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       console.log(`Task added to ${box}`);
     } catch (error) {
       console.error('항목 추가 오류:', error);
-      alert('항목 추가에 실패했습니다. 콘솔을 확인해주세요.');
+      alert('항목 추가에 실패했습니다. Firestore 권한을 확인해주세요.');
+    }
+  }
+  
+  async function editTask(box, id, newText) {
+    if (!newText.trim()) {
+      alert('수정할 내용을 입력해주세요.');
+      return;
+    }
+    try {
+      console.log(`Editing task in ${box} with ID: ${id}, new text: ${newText}`);
+      await db.collection(`${box}Tasks`).doc(id).update({ text: newText });
+      console.log(`Task edited in ${box}`);
+    } catch (error) {
+      console.error('항목 수정 오류:', error);
+      alert('항목 수정에 실패했습니다. Firestore 권한을 확인해주세요.');
     }
   }
   
@@ -69,15 +92,14 @@ const firebaseConfig = {
     try {
       console.log(`Toggling task in ${box} with ID: ${id}`);
       const taskRef = db.collection(`${box}Tasks`).doc(id);
-      const taskSnap = await db.collection(`${box}Tasks`).orderBy('createdAt').get();
-      const task = taskSnap.docs.find(doc => doc.id === id);
-      if (task) {
-        await taskRef.update({ completed: !task.data().completed });
+      const taskSnap = await taskRef.get();
+      if (taskSnap.exists) {
+        await taskRef.update({ completed: !taskSnap.data().completed });
         console.log(`Task toggled in ${box}`);
       }
     } catch (error) {
       console.error('항목 토글 오류:', error);
-      alert('항목 상태 변경에 실패했습니다. 콘솔을 확인해주세요.');
+      alert('항목 상태 변경에 실패했습니다. Firestore 권한을 확인해주세요.');
     }
   }
   
@@ -88,7 +110,23 @@ const firebaseConfig = {
       console.log(`Task deleted from ${box}`);
     } catch (error) {
       console.error('항목 삭제 오류:', error);
-      alert('항목 삭제에 실패했습니다. 콘솔을 확인해주세요.');
+      alert('항목 삭제에 실패했습니다. Firestore 권한을 확인해주세요.');
+    }
+  }
+  
+  async function updateTaskOrder(box, orderedIds) {
+    try {
+      console.log(`Updating order for ${box}:`, orderedIds);
+      const batch = db.batch();
+      orderedIds.forEach((id, index) => {
+        const taskRef = db.collection(`${box}Tasks`).doc(id);
+        batch.update(taskRef, { order: index + 1 });
+      });
+      await batch.commit();
+      console.log(`Order updated for ${box}`);
+    } catch (error) {
+      console.error('순서 업데이트 오류:', error);
+      alert('항목 순서 변경에 실패했습니다. Firestore 권한을 확인해주세요.');
     }
   }
   
@@ -105,7 +143,7 @@ const firebaseConfig = {
       console.log('Daily tasks reset');
     } catch (error) {
       console.error('일일 리셋 오류:', error);
-      alert('일일 리셋에 실패했습니다. 콘솔을 확인해주세요.');
+      alert('일일 리셋에 실패했습니다. Firestore 권한을 확인해주세요.');
     }
   }
   
@@ -122,7 +160,7 @@ const firebaseConfig = {
       console.log('Weekly tasks reset');
     } catch (error) {
       console.error('주간 리셋 오류:', error);
-      alert('주간 리셋에 실패했습니다. 콘솔을 확인해주세요.');
+      alert('주간 리셋에 실패했습니다. Firestore 권한을 확인해주세요.');
     }
   }
   
@@ -145,7 +183,7 @@ const firebaseConfig = {
       });
     });
   
-    // 체크박스 및 삭제 버튼 이벤트
+    // 체크박스, 수정, 삭제 버튼 이벤트
     document.addEventListener('click', (e) => {
       if (e.target.type === 'checkbox') {
         const box = e.target.dataset.box;
@@ -157,20 +195,46 @@ const firebaseConfig = {
         const id = e.target.dataset.id;
         console.log('Delete button clicked:', box, id);
         deleteTask(box, id);
+      } else if (e.target.classList.contains('edit-btn')) {
+        const box = e.target.dataset.box;
+        const id = e.target.dataset.id;
+        console.log('Edit button clicked:', box, id);
+        const currentText = e.target.parentElement.parentElement.querySelector('span').textContent;
+        const newText = prompt('항목 내용을 수정하세요:', currentText);
+        if (newText && newText.trim()) {
+          editTask(box, id, newText);
+        } else if (newText !== null) {
+          alert('수정할 내용을 입력해주세요.');
+        }
       }
+    });
+  
+    // 드래그 앤 드롭 설정
+    Object.keys(taskLists).forEach(box => {
+      console.log(`Setting up Sortable for ${box}Tasks`);
+      new Sortable(taskLists[box], {
+        animation: 150,
+        ghostClass: 'sortable-ghost',
+        chosenClass: 'sortable-chosen',
+        onEnd: async (evt) => {
+          const orderedIds = Array.from(taskLists[box].children).map(li => li.dataset.id);
+          console.log(`New order for ${box}:`, orderedIds);
+          await updateTaskOrder(box, orderedIds);
+        }
+      });
     });
   
     // 실시간 데이터 동기화 및 정렬
     Object.keys(taskLists).forEach(box => {
       console.log(`Setting up snapshot listener for ${box}Tasks`);
-      db.collection(`${box}Tasks`).orderBy('createdAt').onSnapshot((snapshot) => {
+      db.collection(`${box}Tasks`).orderBy('order').onSnapshot((snapshot) => {
         const tasks = snapshot.docs.map(doc => ({ id: doc.id, data: doc.data() }));
         const completedTasks = tasks.filter(t => t.data.completed);
         const incompleteTasks = tasks.filter(t => !t.data.completed);
         renderTasks(box, [...incompleteTasks, ...completedTasks]);
       }, (error) => {
         console.error(`Snapshot error for ${box}Tasks:`, error);
-        alert('데이터 동기화에 실패했습니다. 콘솔을 확인해주세요.');
+        alert(`데이터 동기화에 실패했습니다. ${box}Tasks 컬렉션의 Firestore 권한을 확인해주세요.`);
       });
     });
   });

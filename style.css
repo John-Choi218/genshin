@@ -55,6 +55,7 @@ li {
     align-items: center;
     padding: 10px 0;
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    cursor: move;
 }
 
 li.completed {
@@ -66,8 +67,13 @@ input[type="checkbox"] {
     margin-right: 10px;
 }
 
-.delete-btn {
+.button-group {
     margin-left: auto;
+    display: flex;
+    gap: 5px;
+}
+
+.delete-btn {
     background-color: #ff4d4d;
     color: white;
     border: none;
@@ -78,6 +84,19 @@ input[type="checkbox"] {
 
 .delete-btn:hover {
     background-color: #cc0000;
+}
+
+.edit-btn {
+    background-color: #4c8bf5;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.edit-btn:hover {
+    background-color: #3b6bc4;
 }
 
 .add-task {
@@ -95,6 +114,15 @@ input[type="checkbox"] {
     background-color: #45a049;
 }
 
+.sortable-ghost {
+    opacity: 0.4;
+    background: #c8ebfb;
+}
+
+.sortable-chosen {
+    background: #e6f3ff;
+}
+
 @media (max-width: 360px) {
     h2 {
         font-size: 1.2em;
@@ -104,7 +132,11 @@ input[type="checkbox"] {
         font-size: 0.9em;
     }
 
-    .add-task, .delete-btn {
+    .add-task, .delete-btn, .edit-btn {
         padding: 8px;
+    }
+
+    .button-group {
+        gap: 3px;
     }
 }
