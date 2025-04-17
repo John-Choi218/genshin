@@ -141,9 +141,9 @@ async function resetDailyTasks() {
           batch.update(taskRef, { completed: false });
       });
       await batch.commit();
-      await db.collection('metadata').doc('resetTimes').update({
+      await db.collection('metadata').doc('resetTimes').set({ // 🔄 변경됨
           lastDailyReset: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      }, { merge: true }); // 🔄 변경됨
       console.log('Daily tasks reset');
   } catch (error) {
       console.error('일일 리셋 오류:', error);
@@ -161,9 +161,9 @@ async function resetWeeklyTasks() {
           batch.update(taskRef, { completed: false });
       });
       await batch.commit();
-      await db.collection('metadata').doc('resetTimes').update({
+      await db.collection('metadata').doc('resetTimes').set({ // 🔄 변경됨
           lastWeeklyReset: firebase.firestore.FieldValue.serverTimestamp()
-      });
+      }, { merge: true }); // 🔄 변경됨
       console.log('Weekly tasks reset');
   } catch (error) {
       console.error('주간 리셋 오류:', error);
@@ -181,7 +181,6 @@ async function checkAndResetTasks() {
       const resetDoc = await db.collection('metadata').doc('resetTimes').get();
       const resetData = resetDoc.exists ? resetDoc.data() : {};
 
-      // 일일 리셋 확인
       const lastDailyReset = resetData.lastDailyReset
           ? DateTime.fromJSDate(resetData.lastDailyReset.toDate()).setZone('Asia/Seoul')
           : DateTime.fromMillis(0);
@@ -189,7 +188,6 @@ async function checkAndResetTasks() {
           await resetDailyTasks();
       }
 
-      // 주간 리셋 확인
       const lastWeeklyReset = resetData.lastWeeklyReset
           ? DateTime.fromJSDate(resetData.lastWeeklyReset.toDate()).setZone('Asia/Seoul')
           : DateTime.fromMillis(0);
@@ -205,7 +203,6 @@ async function checkAndResetTasks() {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM fully loaded, setting up event listeners');
 
-  // 추가 버튼 이벤트
   const addTaskButtons = document.querySelectorAll('.add-task');
   console.log('Found add-task buttons:', addTaskButtons.length);
   addTaskButtons.forEach(button => {
@@ -221,7 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   });
 
-  // 체크박스, 수정, 삭제 버튼 이벤트
   document.addEventListener('click', (e) => {
       if (e.target.type === 'checkbox') {
           const box = e.target.dataset.box;
@@ -247,7 +243,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
   });
 
-  // 드래그 앤 드롭 설정
   Object.keys(taskLists).forEach(box => {
       console.log(`Setting up Sortable for ${box}Tasks`);
       new Sortable(taskLists[box], {
@@ -263,7 +258,6 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   });
 
-  // 실시간 데이터 동기화 및 정렬
   Object.keys(taskLists).forEach(box => {
       console.log(`Setting up snapshot listener for ${box}Tasks`);
       db.collection(`${box}Tasks`).orderBy('order').onSnapshot((snapshot) => {
@@ -277,6 +271,5 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   });
 
-  // 리셋 확인 및 실행
   checkAndResetTasks();
 });
